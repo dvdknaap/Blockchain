@@ -1,114 +1,91 @@
 <?php
-namespace blockchain\src;
+namespace blockChain;
 
-include('src/blockClass.php');
-include('src/transactionClass.php');
+class blockchain
+{
+    public $chain          = [];
+    protected $totalBlocks = 0;
+    protected $wallet;
+    protected $block;
+    protected $lastBlockHash = 'fistBlockHash';
 
-class blockchain {
-	public $chain          = [];
-	protected $totalBlocks = 0;
+    public function __construct()
+    {
+        $this->block  = new block();
+        $this->wallet = new wallet();
+    }
+    /**
+     * Create first block (nemesis block)
+     * @return object Return this class
+     */
+    public function createFirstBlock(int $walletAmount = 100, array $walletInfo =[])
+    {
+		$walletEncryptInfo = $this->wallet->createWallet();
 
-	/**
-	 * Create first block (nemesis block)
-	 * @return object Return this class
-	 */
-	function createFirstBlock() {
-		return $this->newBlock('toAddress', 'fromAddress',  500, 'firstBlock', false, 0);
-	}
+		$firstBlock = $this->newBlock($walletEncryptInfo['walletKey'], 'firstWallet', $walletAmount);
+		
+        return $walletEncryptInfo;
+    }
 
-	/**
-	 * Get Last block of chain
-	 * @return array Array of last block details
-	 */
-	function lastBlock() {
-		// Total blocks in block chain
-		if ($this->totalBlocks === 0) {
-			return ['hash' => 'fistBlockHash'];
-		}
+    /**
+     * Create an new block
+     * @param  string         $toAddress    Wallet adress of receiver
+     * @param  string         $fromAddress  Wallet address of sender
+     * @param  int            $amount       Amount that needs to be sended
+     * @param  string         $desc         Optional: description for the transaction
+     * @param  string           $trx          Optional: Transaction id
+     * @return object Return this class
+     */
+    public function newBlock(string $toAddress, string $fromAddress, int $amount, string $desc = '', string $trx = '')
+    {
 
-		return $this->chain[$this->totalBlocks-1];
-	}
+        // Check if we received an Transaction ID
+        if (!$trx) {
+            // Create one
+            // @todo: create on with transaction Claas
+            $trx = rand(1, 1000);
+        }
 
-	/**
-	 * Create an new block
-	 * @param  string   	  $toAddress    Wallet adress of receiver
-	 * @param  string   	  $fromAddress  Wallet address of sender
-	 * @param  int  		  $amount       Amount that needs to be sended
-	 * @param  string   	  $desc         Optional: description for the transaction
-	 * @param  string/boolean $trx          Optional: Transaction id
-	 * @param  int/boolean 	  $blockId      Block number
-	 * @param  int/boolean 	  $time         Time of current created block
-	 * @param  string/boolean $previousHash Hash of previous hash
-	 * @return object Return this class
-	 */
-	function newBlock($toAddress, $fromAddress, $amount, $desc = '', $trx = false, $blockId = false, $time = false, $previousHash = false) {
+        // Get new block to chain
+        $newBlock = $this->block->getNewBlock($toAddress, $fromAddress, $amount, $desc, $trx, $this->lastBlockHash);
 
-		// Check if we received an Transaction ID
-		if (!$trx) {
-			// Create one
-			// @todo: create on with transaction Claas
-			$trx = rand(1,1000);
-		}
+        $this->chain[]       = $newBlock;
+        $this->lastBlockHash = $newBlock['hash'];
+        $this->totalBlocks++;
 
-		// Check if we received an Block ID
-		if (!$blockId) {
-			$blockId = $this->totalBlocks;
-		}
+        return $this;
+    }
 
-		// Check if we received an Transaction Time
-		if (!$time) {
-			$time = time();
-		}
+    /**
+     * Check if the block chain is valid and not modified
+     * @return boolean Return an boolean to check if the blockchain is valid
+     */
+    public function verifyBlockChain()
+    {
 
-		// Check if we received an previous hash
-		if (!$previousHash) {
-			$previousHash = $this->lastBlock()['hash'];
-		}
+        $valid = false;
 
-		// Add new block to chain
-		$this->chain[] = block::getNewBlock($blockId, $time, $toAddress, $fromAddress, $amount, $desc, $trx, $previousHash);
+        for ($b = 1; $b < $this->totalBlocks; $b++) {
+            $currentBlock  = $this->chain[$b];
+            $previousBlock = $this->chain[$b - 1];
 
-		$this->totalBlocks++;
+            // Calculate hash of current block
+            if ($this->block->checkBlock($currentBlock['hash'],
+                $currentBlock['previousHash'],
+                $currentBlock['time'],
+                $currentBlock['toAddress'],
+                $currentBlock['fromAddress'],
+                $currentBlock['amount'],
+                $currentBlock['desc'],
+                $currentBlock['trx'],
+                $previousBlock['hash']
+            )) {
+                $valid = true;
+            } else {
+                break;
+            }
+        }
 
-		return $this;
-	}
-
-
-	 /**
-	  * Check if the block chain is valid and not modified
-	  * @return boolean Return an boolean to check if the blockchain is valid
-	  */
-	function verifyBlockChain() {
-
-		$valid = true;
-
-		for ($b = 1; $b < $this->totalBlocks; $b++) {
-			$currentBlock  = $this->chain[$b];
-			$previousBlock = $this->chain[$b-1];
-			
-			// Calculate hash of current block
-			$recalculateCurrentBlock = block::getNewBlock(
-				$currentBlock['id'], 
-				$currentBlock['time'], 
-				$currentBlock['toAddress'], 
-				$currentBlock['fromAddress'], 
-				$currentBlock['amount'], 
-				$currentBlock['desc'], 
-				$currentBlock['trx'],  
-				$previousBlock['hash']
-			);
-
-			// Check if current block hash is different then the recalculated hash
-			if ($currentBlock['hash'] !== $recalculateCurrentBlock['hash']) {
-				$valid = false;
-				break;
-			// Check if the previous hash is different then the previous block hash
-			} elseif ($currentBlock['previousHash'] !== $previousBlock['hash']) {
-				$valid = false;
-				break;
-			}
-		}
-
-		return $valid;
-	}
+        return $valid;
+    }
 }

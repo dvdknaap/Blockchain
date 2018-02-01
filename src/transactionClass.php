@@ -1,6 +1,7 @@
 <?php
-namespace blockchain\src;
+namespace blockChain;
 
-class transaction {
+class transaction
+{
 
 }
