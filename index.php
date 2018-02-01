@@ -13,7 +13,7 @@ print_r($firstWalletInfo);
 
 
 //execution time of the script
-echo 'Total Execution Time: ' . ((microtime(true) - $time_start)) . ' Mins';
+// echo 'Total Execution Time: ' . ((microtime(true) - $time_start)) . ' Mins';
 
 $time_start = microtime(true);
 
