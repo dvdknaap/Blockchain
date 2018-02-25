@@ -29,4 +29,4 @@ echo 'done creating test blockchain' . PHP_EOL;
 
 var_dump($blockchain->verifyBlockChain());
 
-echo 'done cerify block chain' . PHP_EOL;
+echo 'done verify block chain' . PHP_EOL;
